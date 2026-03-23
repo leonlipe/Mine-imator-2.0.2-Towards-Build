@@ -7,7 +7,7 @@ function temp_get_model_tex_material_preview(texobj, part)
 	if (texobj = null)
 		return null
 	
-	if (object_index != obj_timeline && model != null && model.model_format = e_model_format.BLOCK) // Not scenery timeline and model is a .json
+	if (object_index != obj_timeline && model != null && (model.model_format = e_model_format.BLOCK || model.model_format = e_model_format.MESH)) // Block / external mesh
 		return texobj.block_preview_texture
 	
 	with (texobj)

@@ -19,6 +19,8 @@ function render_world_block_map(modelmap, res)
 			var tex;
 			with (res)
 				tex = res_get_model_texture(key)
+			if (tex = null || !sprite_exists(tex))
+				tex = spr_shape;
 			render_set_texture(tex)
 			vbuffer_render(vbuffer)
 		}

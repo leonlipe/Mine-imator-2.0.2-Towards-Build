@@ -23,7 +23,7 @@ function action_lib_model_tex(res)
 				
 				var type = e_res_type.SKIN;
 				if (temp_edit.type = e_tl_type.MODEL && temp_edit.model != null &&
-					temp_edit.model.model_format = e_model_format.BLOCK) // Load as block sheet if the selected model is in .json format
+					(temp_edit.model.model_format = e_model_format.BLOCK || temp_edit.model.model_format = e_model_format.MESH)) // Block sheet / external mesh
 					type = e_res_type.BLOCK_SHEET
 				
 				res = new_res(fn, type)

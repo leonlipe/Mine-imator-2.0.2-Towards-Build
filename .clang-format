@@ -1,0 +1,11 @@
+---
+# Mine-imator C++ (CppProject) — LLVM base, 4-space indent, keep existing style reasonably close
+BasedOnStyle: LLVM
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 120
+AllowShortFunctionsOnASingleLine: Inline
+PointerAlignment: Left
+NamespaceIndent: None
+BreakBeforeBraces: Attach

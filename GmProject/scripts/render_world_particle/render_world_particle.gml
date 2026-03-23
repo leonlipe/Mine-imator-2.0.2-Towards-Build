@@ -29,7 +29,7 @@ function render_world_particle()
 				if (temp.model = null)
 					break
 				
-				if (temp.model.model_format = e_model_format.BLOCK)
+				if (temp.model.model_format = e_model_format.BLOCK || temp.model.model_format = e_model_format.MESH)
 				{
 					off = point3D_mul(rep, -block_size / 2)
 					break
@@ -77,7 +77,7 @@ function render_world_particle()
 				if (temp.model = null)
 					break
 				
-				if (temp.model.model_format = e_model_format.BLOCK)
+				if (temp.model.model_format = e_model_format.BLOCK || temp.model.model_format = e_model_format.MESH)
 				{
 					var res;
 					if (temp.model_tex != null && temp.model_tex.block_sheet_texture != null)

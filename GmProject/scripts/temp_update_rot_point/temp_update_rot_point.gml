@@ -28,7 +28,7 @@ function temp_update_rot_point()
 		
 		case e_temp_type.MODEL:
 		{
-			if (model != null && model.model_format = e_model_format.BLOCK)
+			if (model != null && (model.model_format = e_model_format.BLOCK || model.model_format = e_model_format.MESH))
 			{
 				rot_point[X] = block_size / 2
 				rot_point[Y] = block_size / 2

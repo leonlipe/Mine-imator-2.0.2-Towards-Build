@@ -1816,6 +1816,8 @@
     {"id":{"name":"ptype_update_sprite_vbuffers","path":"scripts/ptype_update_sprite_vbuffers/ptype_update_sprite_vbuffers.yy",},"order":11,},
     {"id":{"name":"action_tl_frame_sound_pitch","path":"scripts/action_tl_frame_sound_pitch/action_tl_frame_sound_pitch.yy",},"order":8,},
     {"id":{"name":"res_load","path":"scripts/res_load/res_load.yy",},"order":1,},
+    {"id":{"name":"mesh_load_obj","path":"scripts/mesh_load_obj/mesh_load_obj.yy",},"order":2,},
+    {"id":{"name":"mesh_load_glb","path":"scripts/mesh_load_glb/mesh_load_glb.yy",},"order":3,},
     {"id":{"name":"res_load_audio","path":"scripts/res_load_audio/res_load_audio.yy",},"order":3,},
     {"id":{"name":"res_load_browse","path":"scripts/res_load_browse/res_load_browse.yy",},"order":5,},
     {"id":{"name":"res_load_legacy_block_sheet","path":"scripts/res_load_legacy_block_sheet/res_load_legacy_block_sheet.yy",},"order":7,},

@@ -18,7 +18,7 @@ function res_save()
 			while (!is_undefined(key))
 			{
 				var fn = key;
-				if (model_format = e_model_format.BLOCK) // Export to a folder with the model's name
+				if (model_format = e_model_format.BLOCK || model_format = e_model_format.MESH) // Export to a folder with the model's name
 					fn = name + "/" + key + ".png"
 			
 				directory_create_lib(save_folder + "/" + filename_dir(fn))
@@ -34,7 +34,7 @@ function res_save()
 			while (!is_undefined(key))
 			{
 				var fn = key;
-				if (model_format = e_model_format.BLOCK) // Export to a folder with the model's name
+				if (model_format = e_model_format.BLOCK || model_format = e_model_format.MESH) // Export to a folder with the model's name
 					fn = name + "/" + key + ".png"
 			
 				directory_create_lib(save_folder + "/" + filename_dir(fn))
@@ -50,7 +50,7 @@ function res_save()
 			while (!is_undefined(key))
 			{
 				var fn = key;
-				if (model_format = e_model_format.BLOCK) // Export to a folder with the model's name
+				if (model_format = e_model_format.BLOCK || model_format = e_model_format.MESH) // Export to a folder with the model's name
 					fn = name + "/" + key + ".png"
 			
 				directory_create_lib(save_folder + "/" + filename_dir(fn))

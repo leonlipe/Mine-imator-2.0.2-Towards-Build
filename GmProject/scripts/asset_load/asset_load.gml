@@ -87,6 +87,8 @@ function asset_load()
 		case ".mimodel":
 		case ".json":
 		case ".obj":
+		case ".glb":
+		case ".gltf":
 			log("Opening model", fn)
 			action_res_model_load(fn)
 			return true

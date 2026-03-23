@@ -22,7 +22,7 @@ function action_bench_model_tex_normal(res)
 				
 				var type = e_res_type.SKIN;
 				if (bench_settings.type = e_tl_type.MODEL && bench_settings.model != null &&
-					bench_settings.model.model_format = e_model_format.BLOCK) // Load as block sheet if the selected model is in .json format
+					(bench_settings.model.model_format = e_model_format.BLOCK || bench_settings.model.model_format = e_model_format.MESH)) // Block sheet / external mesh
 					type = e_res_type.BLOCK_SHEET
 				
 				res = new_res(fn, type)

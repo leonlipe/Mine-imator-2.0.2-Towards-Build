@@ -31,14 +31,16 @@ function temp_get_model_texobj(texobj)
 		texobj = model
 		if (texobj != null)
 		{
+			// BLOCK: no block sheet / map → Minecraft atlas. MESH (.obj/.glb): keep this resource so
+			// res_get_model_texture runs on the mesh asset (not mc_res with wrong material keys).
 			if (texobj.model_format = e_model_format.BLOCK)
 			{
-				if (texobj.model_texture_map = null && texobj.block_sheet_texture = null) // Model has no texture, use Minecraft
+				if (texobj.model_texture_map = null && texobj.block_sheet_texture = null)
 					texobj = mc_res
 			}
-			else
+			else if (texobj.model_format != e_model_format.MESH)
 			{
-				if (texobj.model_texture_map = null && texobj.model_texture = null) // Model has no texture, use Minecraft
+				if (texobj.model_texture_map = null && texobj.model_texture = null)
 					texobj = mc_res
 			}
 		}

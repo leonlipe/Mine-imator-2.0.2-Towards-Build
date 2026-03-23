@@ -1,3 +1,5 @@
+**Quick path (this fork):** after Qt and `External` are in place, run `Scripts\Build-FromCpp.ps1` from the repo root — see [`../Docs/BUILD.md`](../Docs/BUILD.md).
+
 **Links:**
 * CMake GUI: https://cmake.org/download/
 * Python: https://www.python.org/downloads/

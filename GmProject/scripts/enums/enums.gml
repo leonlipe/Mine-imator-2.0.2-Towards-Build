@@ -521,7 +521,8 @@ function enums()
 	enum e_model_format
 	{
 		MIMODEL,
-		BLOCK
+		BLOCK,
+		MESH // External mesh (.obj, etc.); append-only enum value for save compatibility
 	}
 	
 	enum icons

@@ -176,7 +176,7 @@ function preview_draw(preview, xx, yy, width, height)
 						{
 							case e_res_type.MODEL:
 							{
-								if (select.model_format = e_model_format.BLOCK)
+								if (select.model_format = e_model_format.BLOCK || select.model_format = e_model_format.MESH)
 								{
 									var displaysize = vec3(block_size);
 									prevcam_zoom = 32
@@ -210,7 +210,7 @@ function preview_draw(preview, xx, yy, width, height)
 								if (select.model = null)
 									break
 								
-								if (select.model.model_format = e_model_format.BLOCK)
+								if (select.model.model_format = e_model_format.BLOCK || select.model.model_format = e_model_format.MESH)
 								{
 									var displaysize = vec3(block_size);
 									prevcam_zoom = 32
@@ -321,7 +321,7 @@ function preview_draw(preview, xx, yy, width, height)
 							
 							case e_res_type.MODEL:
 							{
-								if (select.model_format = e_model_format.BLOCK)
+								if (select.model_format = e_model_format.BLOCK || select.model_format = e_model_format.MESH)
 								{
 									render_world_block(select.block_vbuffer, mc_res)
 									render_world_block_map(select.model_block_map, select)
@@ -349,7 +349,7 @@ function preview_draw(preview, xx, yy, width, height)
 								if (select.model = null)
 									break
 								
-								if (select.model.model_format = e_model_format.BLOCK)
+								if (select.model.model_format = e_model_format.BLOCK || select.model.model_format = e_model_format.MESH)
 								{
 									var res;
 									if (select.model_tex != null && select.model_tex.block_sheet_texture != null)

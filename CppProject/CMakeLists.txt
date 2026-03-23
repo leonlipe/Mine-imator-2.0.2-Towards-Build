@@ -159,8 +159,10 @@ set(LIBS ${LIBS} "${EXT_DIR}/libswresample.a")
 set(LIBS ${LIBS} "${EXT_DIR}/libswscale.a")
 set(LIBS ${LIBS} "${EXT_DIR}/libavutil.a")
 
-# Add C++ sources
+# Add C++ sources (exclude in-tree CMake build dirs — e.g. build-release picks up CMakeCXXCompilerId.cpp)
 file(GLOB_RECURSE SRCS RELATIVE "${CMAKE_SOURCE_DIR}" "*.cpp" "*.hpp")
+list(FILTER SRCS EXCLUDE REGEX "^build-")
+list(FILTER SRCS EXCLUDE REGEX "/build-")
 source_group(TREE "${CMAKE_SOURCE_DIR}" PREFIX ${PROJECT_NAME} FILES ${SRCS})
 qt5_add_resources(SRCS ${QT_INDEX_FILE})
 

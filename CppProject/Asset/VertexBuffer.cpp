@@ -1,6 +1,8 @@
 #include "VertexBuffer.hpp"
 #include "Shader.hpp"
 
+#include <cmath>
+
 namespace CppProject
 {
 	VertexBuffer::VertexBuffer(QDataStream& stream) : VertexBuffer()
@@ -309,8 +311,25 @@ namespace CppProject
 				VecType edge2 = { v3.x - v1.x, v3.y - v1.y, v3.z - v1.z };
 				VecType deltaUv1 = { v2.u - v1.u, v2.v - v1.v };
 				VecType deltaUv2 = { v3.u - v1.u, v3.v - v1.v };
-				RealType f = 1.0 / (deltaUv1.x * deltaUv2.y - deltaUv1.y * deltaUv2.x);
-				VecType t = ((edge1 * deltaUv2.y - edge2 * deltaUv1.y) * f).GetNormalized();
+				RealType denom = deltaUv1.x * deltaUv2.y - deltaUv1.y * deltaUv2.x;
+				VecType t;
+				if (std::abs((double)denom) < 1e-12)
+				{
+					// OBJ without vt / duplicate UVs: avoid inf/NaN tangents (invisible or corrupt draw)
+					VecType n = VecType::CrossProduct(edge1, edge2).GetNormalized();
+					VecType fallback = edge1.GetNormalized();
+					if (fallback.GetLength() < 1e-12)
+						fallback = { 1, 0, 0 };
+					RealType ndot = VecType::DotProduct(fallback, n);
+					t = (fallback - n * ndot).GetNormalized();
+					if (t.GetLength() < 1e-12)
+						t = { 1, 0, 0 };
+				}
+				else
+				{
+					RealType f = 1.0 / denom;
+					t = ((edge1 * deltaUv2.y - edge2 * deltaUv1.y) * f).GetNormalized();
+				}
 				v1.SetTangent(t.x, t.y, t.z);
 				v2.SetTangent(t.x, t.y, t.z);
 				v3.SetTangent(t.x, t.y, t.z);

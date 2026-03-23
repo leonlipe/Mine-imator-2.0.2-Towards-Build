@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -474,7 +474,12 @@ namespace CppGen
 			}
 			else
 				Console.WriteLine("Success!");
-			Console.ReadKey();
+			try
+			{
+				if (!Console.IsInputRedirected)
+					Console.ReadKey(true);
+			}
+			catch (InvalidOperationException) { }
 		}
 
 		public static void ResolveProject()

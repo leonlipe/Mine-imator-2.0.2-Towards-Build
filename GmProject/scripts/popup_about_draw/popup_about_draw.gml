@@ -85,6 +85,8 @@ function popup_about_draw()
 	draw_label("mbanders", dx, dy, fa_left, fa_bottom, c_text_secondary, a_text_secondary, font_label)
 	dy += 12
 	draw_label("YogaindoCR", dx, dy, fa_left, fa_bottom, c_text_secondary, a_text_secondary, font_label)
+	dy += 12
+	draw_button_text("Bleufond de Stegripe", dx, dy, popup_open_url, link_stegripe, link_stegripe, font_label)
 	
 	dx += 130 + 24
 	dy = content_y + 176

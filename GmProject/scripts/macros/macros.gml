@@ -20,8 +20,8 @@ function macros()
 	
 	// Versions
 	#macro mineimator_version			"2.0.2"							// Base Mine-imator version
-	#macro mineimator_version_sub		"Simply Upscaled Build 1.0.12"	// Mod name and version (e.g. "Community Build 1.0.0")
-	#macro mineimator_version_extra		"Personal Build 7"				// Additional suffix (e.g. "Alpha 1" or "Pre-Release 2")
+	#macro mineimator_version_sub		"Towards Build 1.0.0"			// Mod name and version (e.g. "Community Build 1.0.0")
+	#macro mineimator_version_extra		""								// Additional suffix (e.g. "Alpha 1" or "Pre-Release 2")
 	#macro mineimator_version_full		(mineimator_version + ((mineimator_version_sub != "") ? " " + mineimator_version_sub : "") + ((mineimator_version_extra != "") ? " (" + mineimator_version_extra + ")" : ""))
 	#macro mineimator_version_date		"2026.2.21"
 	#macro minecraft_version			"1.21.11-rc2" // 1.21.11-rc2
@@ -59,7 +59,7 @@ function macros()
 	#macro unzip_directory				file_directory + "unzip/"
 	#macro render_default				"performance"
 	#macro render_default_file			render_directory + render_default + ".mirender"
-	#macro asset_exts					"*.miobject;*.miframes;*.zip;*.schematic;*.miproject;*.miparticles;*.mimodel;*.png;*.jpg;*.json;*.ttf;*.mp3;*.wav;*.ogg;*.flac;*.wma;*.m4a;*.object;*.keyframes;*.particles;*.mproj;*.mani;*.blocks;*.nbt;*.dat;*.obj;"
+	#macro asset_exts					"*.miobject;*.miframes;*.zip;*.schematic;*.miproject;*.miparticles;*.mimodel;*.png;*.jpg;*.json;*.ttf;*.mp3;*.wav;*.ogg;*.flac;*.wma;*.m4a;*.object;*.keyframes;*.particles;*.mproj;*.mani;*.blocks;*.nbt;*.dat;*.obj;*.glb;*.gltf;"
 	
 	// Minecraft structure
 	#macro mc_file_directory			file_directory + "Minecraft_unzip/"
@@ -111,6 +111,7 @@ function macros()
 	#macro link_twitter					"https://www.mineimator.com/tweets"
 	#macro link_discord					"https://www.mineimator.com/discord"
 	#macro link_donate					"https://www.mineimator.com/donate"
+	#macro link_stegripe				"https://stegripe.org"
 	#macro show_modelbench_popup		!dev_mode && true
 	#macro http_ok						200
 	#macro http_bad_request				400

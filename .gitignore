@@ -1,8 +1,28 @@
 .vs/
 CppGen/CppGen/obj/
 CppGen/CppGen/bin/
-CppGen/Logs/
+# CppGen run output (path is CppGen/CppGen/Logs, not CppGen/Logs)
+CppGen/CppGen/Logs/
+**/Logs/*.log
+*.log
+debug-*.log
+# If *.log still shows in `git status`, it was committed before ignore — run:
+#   git ls-files "*.log" | ForEach-Object { git rm --cached -f -- $_ }
 Builds/
 Installer/Windows/Mine-imator/
 Installer/Mac/Mine-imator.app/Contents/
 Installer/Linux/Mine-imator/usr/local/bin/
+
+# Staged output (see Scripts/Build-FromCpp.ps1)
+Release/
+
+# CMake / local C++ build trees
+CMakeFiles/
+cmake-build-*/
+out/
+CppProject/build/
+CppProject/build-*/
+
+# OS junk
+Thumbs.db
+.DS_Store

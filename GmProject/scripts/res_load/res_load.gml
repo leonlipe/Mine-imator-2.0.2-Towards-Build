@@ -275,6 +275,42 @@ function res_load(reload = false)
 				res_update_model_shape()
 				model_shape_update_color()
 			}
+			else if (filename_ext(fn) = ".obj")
+			{
+				model_format = e_model_format.MESH
+				model_file = null
+				block_vbuffer = null
+				
+				if (!mesh_load_obj(fn, id))
+				{
+					error("errorloadmodel")
+					break
+				}
+			}
+			else if (filename_ext(fn) = ".glb")
+			{
+				model_format = e_model_format.MESH
+				model_file = null
+				block_vbuffer = null
+				
+				if (!mesh_load_glb(fn, id))
+				{
+					error("errorloadmodel")
+					break
+				}
+			}
+			else if (filename_ext(fn) = ".gltf")
+			{
+				model_format = e_model_format.MESH
+				model_file = null
+				block_vbuffer = null
+				
+				if (!mesh_load_gltf(fn, id))
+				{
+					error("errorloadmodel")
+					break
+				}
+			}
 			else
 			{
 				model_format = e_model_format.BLOCK

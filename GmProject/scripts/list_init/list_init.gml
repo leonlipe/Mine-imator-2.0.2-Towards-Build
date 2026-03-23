@@ -117,7 +117,7 @@ function list_init(name)
 			var texobj = temp.model
 			if (texobj != null)
 			{
-				if (texobj.model_format = e_model_format.BLOCK)
+				if (texobj.model_format = e_model_format.BLOCK || texobj.model_format = e_model_format.MESH)
 				{
 					if (texobj.model_texture_map = null && texobj.block_sheet_texture = null) // Model has no texture, use Minecraft
 						texobj = mc_res
@@ -178,7 +178,7 @@ function list_init(name)
 			var texobj = temp.model;
 			if (texobj != null)
 			{
-				if (texobj.model_format = e_model_format.BLOCK)
+				if (texobj.model_format = e_model_format.BLOCK || texobj.model_format = e_model_format.MESH)
 				{
 					if (texobj.model_texture_material_map = null && texobj.block_sheet_texture_material = null) // Model has no texture, use Minecraft
 						texobj = mc_res
@@ -239,7 +239,7 @@ function list_init(name)
 			var texobj = temp.model
 			if (texobj != null)
 			{
-				if (texobj.model_format = e_model_format.BLOCK)
+				if (texobj.model_format = e_model_format.BLOCK || texobj.model_format = e_model_format.MESH)
 				{
 					if (texobj.model_tex_normal_map = null && texobj.block_sheet_tex_normal = null) // Model has no texture, use Minecraft
 						texobj = mc_res
@@ -825,7 +825,7 @@ function list_init(name)
 				texobj = temp.model
 				if (texobj != null)
 				{
-					if (texobj.model_format = e_model_format.BLOCK)
+					if (texobj.model_format = e_model_format.BLOCK || texobj.model_format = e_model_format.MESH)
 					{
 						if (texobj.model_texture_map = null && texobj.block_sheet_texture = null) // Model has no texture, use Minecraft
 							texobj = mc_res
