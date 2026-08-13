@@ -37,7 +37,10 @@ env:
 
 jobs:
   build:
-    runs-on: windows-latest
+    # Pinned rather than windows-latest: verified this image ships Visual Studio Enterprise 2022
+    # (17.14) with the full C++ desktop workload and CMake 3.31.6, which the VS 2022 CMake generator
+    # below needs — windows-latest is a floating label that may point past this by the time you read it.
+    runs-on: windows-2022
     timeout-minutes: 350
     steps:
       - name: Checkout
