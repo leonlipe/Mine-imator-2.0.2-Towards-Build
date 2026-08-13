@@ -146,17 +146,39 @@ jobs:
           arch: x64
 
       # Mirrors CppProject/BUILD.md's Windows 64-bit Qt steps 8.1-8.7, using https instead of the
-      # git:// protocol (same host, more reliable through CI network egress).
+      # git:// protocol (same host, more reliable through CI network egress). qt5's init-repository
+      # clones ~40 submodules over HTTPS, so a mid-transfer "Recv failure / RPC failed" on any one of
+      # them is expected occasionally — retry each git/perl call and raise the HTTP post buffer (the
+      # standard fix for curl "Recv failure" on large packfile transfers).
       - name: Clone Qt 5.15 and init submodules
         if: steps.cache-qt.outputs.cache-hit != 'true'
-        shell: cmd
+        shell: pwsh
         run: |
-          mkdir "%DEV_DIR%\Qt\%QT_VERSION%"
-          cd /d "%DEV_DIR%\Qt\%QT_VERSION%"
-          git clone https://code.qt.io/qt/qt5.git
-          cd qt5
-          git checkout 5.15
-          perl init-repository
+          $ErrorActionPreference = "Stop"
+
+          function Invoke-WithRetry([scriptblock]$Command, $MaxAttempts = 4) {
+              for ($i = 1; $i -le $MaxAttempts; $i++) {
+                  & $Command
+                  if ($LASTEXITCODE -eq 0) { return }
+                  if ($i -eq $MaxAttempts) { throw "Command failed after $MaxAttempts attempts (exit $LASTEXITCODE)" }
+                  $wait = 10 * $i
+                  Write-Warning "Command failed (exit $LASTEXITCODE) — retrying in ${wait}s (attempt $($i+1)/$MaxAttempts)"
+                  Start-Sleep -Seconds $wait
+              }
+          }
+
+          git config --global http.postBuffer 1048576000
+
+          $qtVersionDir = "$env:DEV_DIR\Qt\$env:QT_VERSION"
+          New-Item -ItemType Directory -Force -Path $qtVersionDir | Out-Null
+          Set-Location $qtVersionDir
+
+          if (-not (Test-Path "qt5")) {
+              Invoke-WithRetry { git clone https://code.qt.io/qt/qt5.git }
+          }
+          Set-Location "qt5"
+          Invoke-WithRetry { git checkout 5.15 }
+          Invoke-WithRetry { perl init-repository }
 
       # Uses -schannel (Windows' native TLS backend) instead of CppProject/BUILD.md's -openssl-linked:
       # the app has no direct OpenSSL/QSsl usage in source, and Shining Light's static-lib packaging
