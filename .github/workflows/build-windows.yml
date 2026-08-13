@@ -157,15 +157,22 @@ jobs:
               throw "OpenSSL MSI install failed (exit $($proc.ExitCode))"
           }
 
-          # Qt's legacy configure.bat mishandles quoted -I/-L args containing a space, and the MSI's
-          # default install dir is "C:\Program Files\OpenSSL-Win64" — copy to a space-free path instead
-          # of trusting an unverified MSI custom-install-dir property.
-          $opensslDefault = "C:\Program Files\OpenSSL-Win64"
-          if (-not (Test-Path $opensslDefault)) {
-              Write-Warning "Expected install dir missing; msiexec log tail:"
-              if (Test-Path $msiLog) { Get-Content $msiLog -Tail 80 | Write-Host }
-              throw "OpenSSL install not found at $opensslDefault"
+          # Qt's legacy configure.bat mishandles quoted -I/-L args containing a space, and the MSI installs
+          # under "...\Program Files\..." (exact folder name varies by version, e.g. "OpenSSL-Win64-3.6")
+          # — discover it rather than assume, then copy to a space-free path.
+          $opensslCandidates = @()
+          foreach ($base in @("C:\Program Files", "C:\Program Files (x86)")) {
+              if (Test-Path $base) {
+                  $opensslCandidates += Get-ChildItem -Path $base -Directory -Filter "OpenSSL*" -ErrorAction SilentlyContinue
+              }
           }
+          if ($opensslCandidates.Count -eq 0) {
+              Write-Warning "No OpenSSL* directory found under Program Files; msiexec log tail:"
+              if (Test-Path $msiLog) { Get-Content $msiLog -Tail 150 | Write-Host }
+              throw "Could not locate OpenSSL install directory after a successful MSI install."
+          }
+          $opensslDefault = ($opensslCandidates | Select-Object -First 1).FullName
+          Write-Host "Found OpenSSL install at: $opensslDefault"
           $opensslNoSpaces = "$env:DEV_DIR\OpenSSL"
           Copy-Item -Path $opensslDefault -Destination $opensslNoSpaces -Recurse -Force
           Add-Content -Path $env:GITHUB_ENV -Value "OPENSSL_DIR=$opensslNoSpaces"
