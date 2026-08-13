@@ -110,24 +110,28 @@ jobs:
               if ($LASTEXITCODE -ne 0) { throw "tar failed (exit $LASTEXITCODE) extracting $ArchivePath" }
           }
 
+          # All four of these (project homepage / Savannah / SourceForge) turned out to be unreliable in
+          # CI one at a time (502s, silent stalls, or a Cloudflare JS challenge with no scriptable way
+          # through) — GitHub's own tag-archive endpoint is a CDN with none of those problems. It doesn't
+          # always name the extracted folder the way CMakeLists.txt expects, so discover whatever single
+          # folder tar produced and rename it rather than assume GitHub's naming convention.
+          function Get-GitHubTagSource($Url, $Dest, $ExpectedFolderName) {
+              $archive = "$env:TEMP\$([System.IO.Path]::GetRandomFileName()).tar.gz"
+              Get-FileWithRetry $Url $archive
+              Expand-TarWithCheck $archive @("-xzf") $Dest
+              $extracted = Get-ChildItem -Path $Dest -Directory | Select-Object -First 1
+              $expectedPath = Join-Path $Dest $ExpectedFolderName
+              if ($extracted.FullName -ne $expectedPath) {
+                  Rename-Item -Path $extracted.FullName -NewName $ExpectedFolderName
+              }
+          }
+
           New-Item -ItemType Directory -Force -Path "$env:DEV_DIR\Libzip", "$env:DEV_DIR\FreeType", "$env:DEV_DIR\FFmpeg", "$env:DEV_DIR\OpenAL" | Out-Null
 
-          Get-FileWithRetry "https://libzip.org/download/libzip-1.9.2.tar.gz" "$env:TEMP\libzip.tar.gz"
-          Expand-TarWithCheck "$env:TEMP\libzip.tar.gz" @("-xzf") "$env:DEV_DIR\Libzip"
-
-          # GitHub tag archive instead of download.savannah.gnu.org (502s often) or SourceForge (its
-          # "/download" redirect now serves a Cloudflare JS challenge page to non-browser clients,
-          # unsolvable from a script). GitHub's tarball unpacks to "freetype-VER-2-9-1", not
-          # "freetype-2.9.1" — rename it to match what CppProject/CMakeLists.txt's include path expects.
-          Get-FileWithRetry "https://github.com/freetype/freetype/archive/refs/tags/VER-2-9-1.tar.gz" "$env:TEMP\freetype.tar.gz"
-          Expand-TarWithCheck "$env:TEMP\freetype.tar.gz" @("-xzf") "$env:DEV_DIR\FreeType"
-          Rename-Item -Path "$env:DEV_DIR\FreeType\freetype-VER-2-9-1" -NewName "freetype-2.9.1"
-
-          Get-FileWithRetry "https://ffmpeg.org/releases/ffmpeg-5.0.tar.xz" "$env:TEMP\ffmpeg.tar.xz"
-          Expand-TarWithCheck "$env:TEMP\ffmpeg.tar.xz" @("-xf") "$env:DEV_DIR\FFmpeg"
-
-          Get-FileWithRetry "https://openal-soft.org/openal-releases/openal-soft-1.22.0.tar.bz2" "$env:TEMP\openal.tar.bz2"
-          Expand-TarWithCheck "$env:TEMP\openal.tar.bz2" @("-xf") "$env:DEV_DIR\OpenAL"
+          Get-GitHubTagSource "https://github.com/nih-at/libzip/archive/refs/tags/v1.9.2.tar.gz" "$env:DEV_DIR\Libzip" "libzip-1.9.2"
+          Get-GitHubTagSource "https://github.com/freetype/freetype/archive/refs/tags/VER-2-9-1.tar.gz" "$env:DEV_DIR\FreeType" "freetype-2.9.1"
+          Get-GitHubTagSource "https://github.com/FFmpeg/FFmpeg/archive/refs/tags/n5.0.tar.gz" "$env:DEV_DIR\FFmpeg" "ffmpeg-5.0"
+          Get-GitHubTagSource "https://github.com/kcat/openal-soft/archive/refs/tags/1.22.0.tar.gz" "$env:DEV_DIR\OpenAL" "openal-soft-1.22.0"
 
       # Everything below this point only runs when the Qt cache misses.
       - name: Install Strawberry Perl (for Qt's init-repository)
