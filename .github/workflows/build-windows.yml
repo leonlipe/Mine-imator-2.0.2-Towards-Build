@@ -115,9 +115,13 @@ jobs:
           Get-FileWithRetry "https://libzip.org/download/libzip-1.9.2.tar.gz" "$env:TEMP\libzip.tar.gz"
           Expand-TarWithCheck "$env:TEMP\libzip.tar.gz" @("-xzf") "$env:DEV_DIR\Libzip"
 
-          # SourceForge mirror instead of download.savannah.gnu.org — Savannah's mirror network 502s often.
-          Get-FileWithRetry "https://sourceforge.net/projects/freetype/files/freetype2/2.9.1/freetype-2.9.1.tar.gz/download" "$env:TEMP\freetype.tar.gz"
+          # GitHub tag archive instead of download.savannah.gnu.org (502s often) or SourceForge (its
+          # "/download" redirect now serves a Cloudflare JS challenge page to non-browser clients,
+          # unsolvable from a script). GitHub's tarball unpacks to "freetype-VER-2-9-1", not
+          # "freetype-2.9.1" — rename it to match what CppProject/CMakeLists.txt's include path expects.
+          Get-FileWithRetry "https://github.com/freetype/freetype/archive/refs/tags/VER-2-9-1.tar.gz" "$env:TEMP\freetype.tar.gz"
           Expand-TarWithCheck "$env:TEMP\freetype.tar.gz" @("-xzf") "$env:DEV_DIR\FreeType"
+          Rename-Item -Path "$env:DEV_DIR\FreeType\freetype-VER-2-9-1" -NewName "freetype-2.9.1"
 
           Get-FileWithRetry "https://ffmpeg.org/releases/ffmpeg-5.0.tar.xz" "$env:TEMP\ffmpeg.tar.xz"
           Expand-TarWithCheck "$env:TEMP\ffmpeg.tar.xz" @("-xf") "$env:DEV_DIR\FFmpeg"
