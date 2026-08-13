@@ -139,8 +139,10 @@ jobs:
           Expand-Archive -Path "$env:TEMP\jom.zip" -DestinationPath "$env:DEV_DIR\Jom" -Force
           Add-Content -Path $env:GITHUB_PATH -Value "$env:DEV_DIR\Jom"
 
-      - name: Setup MSVC x64 dev environment (for Qt build)
-        if: steps.cache-qt.outputs.cache-hit != 'true'
+      # Always run (not gated on the Qt cache) — the later "CMake: configure" step in
+      # Build-FromCpp.ps1 uses the Visual Studio generator and fails to locate VS without this,
+      # even on a Qt cache hit where the Qt-build-only steps above are skipped.
+      - name: Setup MSVC x64 dev environment
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
