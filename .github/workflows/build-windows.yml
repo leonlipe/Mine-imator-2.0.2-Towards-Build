@@ -104,7 +104,16 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          Invoke-WebRequest -Uri "https://slproweb.com/download/Win64OpenSSL-3_0_5.msi" -OutFile "$env:TEMP\openssl.msi"
+          # slproweb's numbered download URLs (e.g. Win64OpenSSL-3_0_5.msi) get removed once superseded,
+          # so resolve the current one from their official hashes feed instead of hardcoding a version.
+          $hashes = Invoke-RestMethod -Uri "https://raw.githubusercontent.com/slproweb/opensslhashes/master/win32_openssl_hashes.json"
+          $latest = $hashes.files.PSObject.Properties.Value |
+              Where-Object { $_.bits -eq 64 -and $_.arch -eq "INTEL" -and $_.light -eq $false -and $_.installer -eq "msi" -and $_.basever -like "3.*" } |
+              Sort-Object { [version]$_.basever } -Descending |
+              Select-Object -First 1
+          if (-not $latest) { throw "Could not resolve a current Win64 OpenSSL 3.x MSI from opensslhashes." }
+          Write-Host "Using OpenSSL $($latest.basever): $($latest.url)"
+          Invoke-WebRequest -Uri $latest.url -OutFile "$env:TEMP\openssl.msi"
           Start-Process msiexec.exe -ArgumentList "/i `"$env:TEMP\openssl.msi`" /qn /norestart" -Wait
 
       - name: Install Jom
