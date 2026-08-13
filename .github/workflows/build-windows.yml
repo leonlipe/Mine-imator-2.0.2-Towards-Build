@@ -34,7 +34,8 @@ env:
   QT_VERSION: 5.15.9
   # Bump this suffix to force a fresh Qt build (e.g. after changing QT_VERSION or configure flags).
   QT_CACHE_KEY: qt-5.15.9-win64-msvc2022-v1
-  OPENSSL_DIR: C:\Program Files\OpenSSL-Win64
+  # Set dynamically (space-free path) by the "Install OpenSSL" step below — Qt's configure.bat mishandles
+  # quoted -I/-L args that contain a space, and the MSI's default install dir is "...\Program Files\...".
 
 jobs:
   build:
@@ -148,6 +149,15 @@ jobs:
           Write-Host "Using OpenSSL $($latest.basever): $($latest.url)"
           Get-FileWithRetry $latest.url "$env:TEMP\openssl.msi"
           Start-Process msiexec.exe -ArgumentList "/i `"$env:TEMP\openssl.msi`" /qn /norestart" -Wait
+
+          # Qt's legacy configure.bat mishandles quoted -I/-L args containing a space, and the MSI's
+          # default install dir is "C:\Program Files\OpenSSL-Win64" — copy to a space-free path instead
+          # of trusting an unverified MSI custom-install-dir property.
+          $opensslDefault = "C:\Program Files\OpenSSL-Win64"
+          if (-not (Test-Path $opensslDefault)) { throw "OpenSSL install not found at $opensslDefault" }
+          $opensslNoSpaces = "$env:DEV_DIR\OpenSSL"
+          Copy-Item -Path $opensslDefault -Destination $opensslNoSpaces -Recurse -Force
+          Add-Content -Path $env:GITHUB_ENV -Value "OPENSSL_DIR=$opensslNoSpaces"
 
       - name: Install Jom
         if: steps.cache-qt.outputs.cache-hit != 'true'
