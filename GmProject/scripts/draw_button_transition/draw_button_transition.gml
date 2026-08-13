@@ -16,7 +16,7 @@ function draw_button_transition(xx, yy, transition)
 	
 	tipname = transition
 	
-	if (tipname != "linear" && tipname != "instant" && tipname != "bezier")
+	if (tipname != "linear" && tipname != "instant" && tipname != "bezier" && tipname != "catmullrom")
 	{
 		tipname = string_replace(tipname, "easeinout", "")
 		tipname = string_replace(tipname, "easein", "")

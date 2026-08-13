@@ -38,10 +38,14 @@ function tl_update_values(force = true)
 	// Save 'value' arrays from keyframes to speed up easing
 	if (keyframe_current != null)
 		keyframe_current_values = keyframe_current.value
-	
+
 	if (keyframe_next != null)
 		keyframe_next_values = keyframe_next.value
-	
+
+	// Save neighboring keyframes' 'value' arrays for Catmull-Rom (boundary-clamped to current/next)
+	keyframe_before_values = (keyframe_current != null && keyframe_list_index_prev > 0) ? keyframe_list[| keyframe_list_index_prev - 1].value : keyframe_current_values
+	keyframe_after_values = (keyframe_next != null && k + 1 < ds_list_size(keyframe_list)) ? keyframe_list[| k + 1].value : keyframe_next_values
+
 	keyframe_progress_ease = 0
 	
 	// Transition

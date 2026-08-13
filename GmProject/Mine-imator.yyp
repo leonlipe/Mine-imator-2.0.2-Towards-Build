@@ -57,6 +57,7 @@
     {"id":{"name":"action_background_leaves_jungle_color","path":"scripts/action_background_leaves_jungle_color/action_background_leaves_jungle_color.yy",},"order":17,},
     {"id":{"name":"action_background_leaves_acacia_color","path":"scripts/action_background_leaves_acacia_color/action_background_leaves_acacia_color.yy",},"order":19,},
     {"id":{"name":"bezier_curve_cubic","path":"scripts/bezier_curve_cubic/bezier_curve_cubic.yy",},"order":0,},
+    {"id":{"name":"catmullrom_interpolate","path":"scripts/catmullrom_interpolate/catmullrom_interpolate.yy",},"order":4,},
     {"id":{"name":"action_background_leaves_dark_oak_color","path":"scripts/action_background_leaves_dark_oak_color/action_background_leaves_dark_oak_color.yy",},"order":21,},
     {"id":{"name":"action_background_ground_tex","path":"scripts/action_background_ground_tex/action_background_ground_tex.yy",},"order":1,},
     {"id":{"name":"action_background_ground_slot","path":"scripts/action_background_ground_slot/action_background_ground_slot.yy",},"order":3,},

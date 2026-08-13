@@ -1,0 +1,164 @@
+name: Build Windows (C++)
+
+# Builds Mine-imator.exe via the CppProject/CppGen pipeline (Docs/BUILD.md) — no GameMaker involved.
+#
+# The slow part is a one-time static Qt 5.15.9 build (source clone + configure + jom), which is cached
+# across runs via actions/cache keyed on QT_CACHE_KEY below. First run will be very slow (likely 1-3+
+# hours) and MAY exceed GitHub-hosted runners' 6-hour hard job limit — if it does, increase parallelism
+# is not really possible (jom already uses all cores); consider a self-hosted runner instead, or bump
+# QT_CACHE_KEY only when you intend to pay the long-build cost again (e.g. Qt version change).
+#
+# NOTE: this workflow has not been run end-to-end yet — expect to debug the Qt-build steps on the first
+# real run (no Windows machine was available to test it before committing).
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'GmProject/**'
+      - 'CppProject/**'
+      - 'CppGen/**'
+      - 'Scripts/**'
+      - '.github/workflows/build-windows.yml'
+
+concurrency:
+  group: build-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DEV_DIR: C:\Dev
+  QT_VERSION: 5.15.9
+  # Bump this suffix to force a fresh Qt build (e.g. after changing QT_VERSION or configure flags).
+  QT_CACHE_KEY: qt-5.15.9-win64-msvc2022-v1
+  OPENSSL_DIR: C:\Program Files\OpenSSL-Win64
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 350
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8 (for CppGen)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Restore Qt static build from cache
+        id: cache-qt
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.DEV_DIR }}\Qt\${{ env.QT_VERSION }}\build
+          key: ${{ env.QT_CACHE_KEY }}
+
+      - name: Restore header-only source trees from cache
+        id: cache-headers
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.DEV_DIR }}\Libzip
+            ${{ env.DEV_DIR }}\FreeType
+            ${{ env.DEV_DIR }}\FFmpeg
+            ${{ env.DEV_DIR }}\OpenAL
+          key: headers-libzip1.9.2-freetype2.9.1-ffmpeg5.0-openal1.22.0-v1
+
+      # CppProject/CMakeLists.txt only needs headers from these (the compiled libs are already
+      # prebuilt and committed under CppProject/External/Win64) — no compilation needed here.
+      - name: Download header-only source trees (Libzip / FreeType / FFmpeg / OpenAL)
+        if: steps.cache-headers.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force -Path "$env:DEV_DIR\Libzip", "$env:DEV_DIR\FreeType", "$env:DEV_DIR\FFmpeg", "$env:DEV_DIR\OpenAL" | Out-Null
+
+          Invoke-WebRequest -Uri "https://libzip.org/download/libzip-1.9.2.tar.gz" -OutFile "$env:TEMP\libzip.tar.gz"
+          tar -xzf "$env:TEMP\libzip.tar.gz" -C "$env:DEV_DIR\Libzip"
+
+          Invoke-WebRequest -Uri "https://download.savannah.gnu.org/releases/freetype/freetype-2.9.1.tar.gz" -OutFile "$env:TEMP\freetype.tar.gz"
+          tar -xzf "$env:TEMP\freetype.tar.gz" -C "$env:DEV_DIR\FreeType"
+
+          Invoke-WebRequest -Uri "https://ffmpeg.org/releases/ffmpeg-5.0.tar.xz" -OutFile "$env:TEMP\ffmpeg.tar.xz"
+          tar -xf "$env:TEMP\ffmpeg.tar.xz" -C "$env:DEV_DIR\FFmpeg"
+
+          Invoke-WebRequest -Uri "https://openal-soft.org/openal-releases/openal-soft-1.22.0.tar.bz2" -OutFile "$env:TEMP\openal.tar.bz2"
+          tar -xf "$env:TEMP\openal.tar.bz2" -C "$env:DEV_DIR\OpenAL"
+
+      # Everything below this point only runs when the Qt cache misses.
+      - name: Install Strawberry Perl (for Qt's init-repository)
+        if: steps.cache-qt.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: choco install strawberryperl -y --no-progress
+
+      - name: Install OpenSSL (Win64, needed to configure Qt)
+        if: steps.cache-qt.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Invoke-WebRequest -Uri "https://slproweb.com/download/Win64OpenSSL-3_0_5.msi" -OutFile "$env:TEMP\openssl.msi"
+          Start-Process msiexec.exe -ArgumentList "/i `"$env:TEMP\openssl.msi`" /qn /norestart" -Wait
+
+      - name: Install Jom
+        if: steps.cache-qt.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force -Path "$env:DEV_DIR\Jom" | Out-Null
+          Invoke-WebRequest -Uri "https://download.qt.io/official_releases/jom/jom_1_1_3.zip" -OutFile "$env:TEMP\jom.zip"
+          Expand-Archive -Path "$env:TEMP\jom.zip" -DestinationPath "$env:DEV_DIR\Jom" -Force
+          Add-Content -Path $env:GITHUB_PATH -Value "$env:DEV_DIR\Jom"
+
+      - name: Setup MSVC x64 dev environment (for Qt build)
+        if: steps.cache-qt.outputs.cache-hit != 'true'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      # Mirrors CppProject/BUILD.md's Windows 64-bit Qt steps 8.1-8.7, using https instead of the
+      # git:// protocol (same host, more reliable through CI network egress).
+      - name: Clone Qt 5.15 and init submodules
+        if: steps.cache-qt.outputs.cache-hit != 'true'
+        shell: cmd
+        run: |
+          mkdir "%DEV_DIR%\Qt\%QT_VERSION%"
+          cd /d "%DEV_DIR%\Qt\%QT_VERSION%"
+          git clone https://code.qt.io/qt/qt5.git
+          cd qt5
+          git checkout 5.15
+          perl init-repository
+
+      - name: Configure Qt (static, release)
+        if: steps.cache-qt.outputs.cache-hit != 'true'
+        shell: cmd
+        run: |
+          cd /d "%DEV_DIR%\Qt\%QT_VERSION%\qt5"
+          configure.bat -platform win32-msvc -prefix "%DEV_DIR%/Qt/%QT_VERSION%/build" -opensource -confirm-license -release -static -static-runtime -qt-libjpeg -opengl desktop -openssl-linked -I"%OPENSSL_DIR%/include" -L"%OPENSSL_DIR%/lib/VC/static" OPENSSL_LIBS="-lWs2_32 -lGdi32 -lAdvapi32 -lCrypt32 -lUser32" OPENSSL_LIBS_DEBUG="-llibssl64MDd -llibcrypto64MDd" OPENSSL_LIBS_RELEASE="-llibssl64MT -llibcrypto64MT" -no-icu -nomake tests -nomake examples -nomake tools -skip qt3d -skip qtmultimedia -skip activeqt -skip qtandroidextras -skip qtconnectivity -skip datavis3d -skip qtdoc -skip gamepad -skip qtgraphicaleffects -skip qtcharts -skip qtlocation -skip qtlottie -skip qtnetworkauth -skip qtpurchasing -skip qtquick3d -skip qtquickcontrols -skip qtquickcontrols2 -skip qtquicktimeline -skip qtremoteobjects -skip qtscxml -skip qtsensors -skip qtserialbus -skip qtserialport -skip qtspeech -skip qtvirtualkeyboard -skip qtwayland -skip qtwebengine -skip qtwebglplugin -skip qtwebchannel -skip qtwebsockets -skip qtwebview -skip qtxmlpatterns
+
+      - name: Build Qt (jom)
+        if: steps.cache-qt.outputs.cache-hit != 'true'
+        shell: cmd
+        run: |
+          cd /d "%DEV_DIR%\Qt\%QT_VERSION%\qt5"
+          jom
+          jom install
+
+      - name: Build Mine-imator (CppGen + CMake + package)
+        shell: pwsh
+        run: .\Scripts\Build-FromCpp.ps1 -FreshZip
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mine-imator-Win64
+          path: Release\*.zip
+          if-no-files-found: error
+          retention-days: 14

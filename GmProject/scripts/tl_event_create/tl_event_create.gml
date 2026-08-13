@@ -59,7 +59,10 @@ function tl_event_create()
 	keyframe_animate = false
 	keyframe_current_values = null
 	keyframe_next_values = null
+	keyframe_before_values = null
+	keyframe_after_values = null
 	keyframe_progress_ease = 0
+	keyframe_transition = "linear"
 	
 	frameskip_before = -1
 	

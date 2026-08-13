@@ -6,7 +6,7 @@ function tab_frame_editor_keyframe()
 	var trans, text;
 	trans = tl_edit.value[e_value.TRANSITION]
 	
-	if (trans != "linear" && trans != "instant" && trans != "bezier")
+	if (trans != "linear" && trans != "instant" && trans != "bezier" && trans != "catmullrom")
 	{
 		if (string_contains(trans, "easeinout"))
 		{

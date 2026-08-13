@@ -21,6 +21,9 @@ function ease(func, xx)
 		
 		case "instant":
 			return 0
+
+		case "catmullrom":
+			return catmullrom_interpolate(0, 0, 1, 1, xx)
 		
 		case "easeinquad":
 			return xx * xx

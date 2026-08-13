@@ -452,7 +452,8 @@ function app_startup_lists()
 		"easeinoutback",
 		"easeinbounce",
 		"easeoutbounce",
-		"easeinoutbounce"
+		"easeinoutbounce",
+		"catmullrom"
 	)
 	
 	// Organized list

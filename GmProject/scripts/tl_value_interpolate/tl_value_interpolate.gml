@@ -1,10 +1,12 @@
-/// tl_value_interpolate(valueid, percent, valuestart, valueend)
+/// tl_value_interpolate(valueid, percent, valuestart, valueend, [valuebefore], [valueafter])
 /// @arg valueid
 /// @arg percent
 /// @arg valuestart
 /// @arg valueend
+/// @arg [valuebefore] Neighboring value before valuestart, used for Catmull-Rom interpolation
+/// @arg [valueafter] Neighboring value after valueend, used for Catmull-Rom interpolation
 
-function tl_value_interpolate(vid, p, val1, val2)
+function tl_value_interpolate(vid, p, val1, val2, val0 = undefined, val3 = undefined)
 {
 	switch (vid)
 	{
@@ -145,6 +147,9 @@ function tl_value_interpolate(vid, p, val1, val2)
 		case e_value.EASE_OUT_X:
 		case e_value.EASE_OUT_Y: return val1 // No interpolation
 	}
-	
+
+	if (val0 != undefined && val3 != undefined)
+		return catmullrom_interpolate(val0, val1, val2, val3, p)
+
 	return val1 + p * (val2 - val1)
 }

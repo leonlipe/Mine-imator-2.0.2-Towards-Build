@@ -4099,6 +4099,7 @@
 		"linear": "Linear",
 		"instant": "Instant",
 		"bezier": "Bézier",
+		"catmullrom": "Catmull-Rom",
 		"ease/": {
 			"in": "%1 (Ease in)",
 			"out": "%1 (Ease out)",
