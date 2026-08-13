@@ -34,8 +34,6 @@ env:
   QT_VERSION: 5.15.9
   # Bump this suffix to force a fresh Qt build (e.g. after changing QT_VERSION or configure flags).
   QT_CACHE_KEY: qt-5.15.9-win64-msvc2022-v1
-  # Set dynamically (space-free path) by the "Install OpenSSL" step below — Qt's configure.bat mishandles
-  # quoted -I/-L args that contain a space, and the MSI's default install dir is "...\Program Files\...".
 
 jobs:
   build:
@@ -116,67 +114,6 @@ jobs:
         shell: pwsh
         run: choco install strawberryperl -y --no-progress
 
-      - name: Install OpenSSL (Win64, needed to configure Qt)
-        if: steps.cache-qt.outputs.cache-hit != 'true'
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-
-          function Get-FileWithRetry($Uri, $OutFile, $MaxAttempts = 5) {
-              for ($i = 1; $i -le $MaxAttempts; $i++) {
-                  try {
-                      Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UseBasicParsing
-                      return
-                  } catch {
-                      if ($i -eq $MaxAttempts) { throw }
-                      $wait = [math]::Pow(2, $i)
-                      Write-Warning "Download failed ($Uri): $($_.Exception.Message) — retrying in ${wait}s (attempt $i/$MaxAttempts)"
-                      Start-Sleep -Seconds $wait
-                  }
-              }
-          }
-
-          # slproweb's numbered download URLs (e.g. Win64OpenSSL-3_0_5.msi) get removed once superseded,
-          # so resolve the current one from their official hashes feed instead of hardcoding a version.
-          $hashesFile = "$env:TEMP\openssl_hashes.json"
-          Get-FileWithRetry "https://raw.githubusercontent.com/slproweb/opensslhashes/master/win32_openssl_hashes.json" $hashesFile
-          $hashes = Get-Content $hashesFile -Raw | ConvertFrom-Json
-          $latest = $hashes.files.PSObject.Properties.Value |
-              Where-Object { $_.bits -eq 64 -and $_.arch -eq "INTEL" -and $_.light -eq $false -and $_.installer -eq "msi" -and $_.basever -like "3.*" } |
-              Sort-Object { [version]$_.basever } -Descending |
-              Select-Object -First 1
-          if (-not $latest) { throw "Could not resolve a current Win64 OpenSSL 3.x MSI from opensslhashes." }
-          Write-Host "Using OpenSSL $($latest.basever): $($latest.url)"
-          Get-FileWithRetry $latest.url "$env:TEMP\openssl.msi"
-
-          $msiLog = "$env:TEMP\openssl_install.log"
-          $proc = Start-Process msiexec.exe -ArgumentList "/i `"$env:TEMP\openssl.msi`" /qn /norestart /l*v `"$msiLog`"" -Wait -PassThru
-          if ($proc.ExitCode -ne 0) {
-              Write-Warning "msiexec exited with code $($proc.ExitCode); last 80 log lines:"
-              if (Test-Path $msiLog) { Get-Content $msiLog -Tail 80 | Write-Host }
-              throw "OpenSSL MSI install failed (exit $($proc.ExitCode))"
-          }
-
-          # Qt's legacy configure.bat mishandles quoted -I/-L args containing a space, and the MSI installs
-          # under "...\Program Files\..." (exact folder name varies by version, e.g. "OpenSSL-Win64-3.6")
-          # — discover it rather than assume, then copy to a space-free path.
-          $opensslCandidates = @()
-          foreach ($base in @("C:\Program Files", "C:\Program Files (x86)")) {
-              if (Test-Path $base) {
-                  $opensslCandidates += Get-ChildItem -Path $base -Directory -Filter "OpenSSL*" -ErrorAction SilentlyContinue
-              }
-          }
-          if ($opensslCandidates.Count -eq 0) {
-              Write-Warning "No OpenSSL* directory found under Program Files; msiexec log tail:"
-              if (Test-Path $msiLog) { Get-Content $msiLog -Tail 150 | Write-Host }
-              throw "Could not locate OpenSSL install directory after a successful MSI install."
-          }
-          $opensslDefault = ($opensslCandidates | Select-Object -First 1).FullName
-          Write-Host "Found OpenSSL install at: $opensslDefault"
-          $opensslNoSpaces = "$env:DEV_DIR\OpenSSL"
-          Copy-Item -Path $opensslDefault -Destination $opensslNoSpaces -Recurse -Force
-          Add-Content -Path $env:GITHUB_ENV -Value "OPENSSL_DIR=$opensslNoSpaces"
-
       - name: Install Jom
         if: steps.cache-qt.outputs.cache-hit != 'true'
         shell: pwsh
@@ -221,12 +158,16 @@ jobs:
           git checkout 5.15
           perl init-repository
 
+      # Uses -schannel (Windows' native TLS backend) instead of CppProject/BUILD.md's -openssl-linked:
+      # the app has no direct OpenSSL/QSsl usage in source, and Shining Light's static-lib packaging
+      # (folder/filename layout) drifts across OpenSSL versions in ways Qt 5.15's configure.bat doesn't
+      # tolerate — schannel avoids that whole external dependency for CI.
       - name: Configure Qt (static, release)
         if: steps.cache-qt.outputs.cache-hit != 'true'
         shell: cmd
         run: |
           cd /d "%DEV_DIR%\Qt\%QT_VERSION%\qt5"
-          configure.bat -platform win32-msvc -prefix "%DEV_DIR%/Qt/%QT_VERSION%/build" -opensource -confirm-license -release -static -static-runtime -qt-libjpeg -opengl desktop -openssl-linked -I"%OPENSSL_DIR%/include" -L"%OPENSSL_DIR%/lib/VC/static" OPENSSL_LIBS="-lWs2_32 -lGdi32 -lAdvapi32 -lCrypt32 -lUser32" OPENSSL_LIBS_DEBUG="-llibssl64MDd -llibcrypto64MDd" OPENSSL_LIBS_RELEASE="-llibssl64MT -llibcrypto64MT" -no-icu -nomake tests -nomake examples -nomake tools -skip qt3d -skip qtmultimedia -skip activeqt -skip qtandroidextras -skip qtconnectivity -skip datavis3d -skip qtdoc -skip gamepad -skip qtgraphicaleffects -skip qtcharts -skip qtlocation -skip qtlottie -skip qtnetworkauth -skip qtpurchasing -skip qtquick3d -skip qtquickcontrols -skip qtquickcontrols2 -skip qtquicktimeline -skip qtremoteobjects -skip qtscxml -skip qtsensors -skip qtserialbus -skip qtserialport -skip qtspeech -skip qtvirtualkeyboard -skip qtwayland -skip qtwebengine -skip qtwebglplugin -skip qtwebchannel -skip qtwebsockets -skip qtwebview -skip qtxmlpatterns
+          configure.bat -platform win32-msvc -prefix "%DEV_DIR%/Qt/%QT_VERSION%/build" -opensource -confirm-license -release -static -static-runtime -qt-libjpeg -opengl desktop -schannel -no-icu -nomake tests -nomake examples -nomake tools -skip qt3d -skip qtmultimedia -skip activeqt -skip qtandroidextras -skip qtconnectivity -skip datavis3d -skip qtdoc -skip gamepad -skip qtgraphicaleffects -skip qtcharts -skip qtlocation -skip qtlottie -skip qtnetworkauth -skip qtpurchasing -skip qtquick3d -skip qtquickcontrols -skip qtquickcontrols2 -skip qtquicktimeline -skip qtremoteobjects -skip qtscxml -skip qtsensors -skip qtserialbus -skip qtserialport -skip qtspeech -skip qtvirtualkeyboard -skip qtwayland -skip qtwebengine -skip qtwebglplugin -skip qtwebchannel -skip qtwebsockets -skip qtwebview -skip qtxmlpatterns
 
       - name: Build Qt (jom)
         if: steps.cache-qt.outputs.cache-hit != 'true'
