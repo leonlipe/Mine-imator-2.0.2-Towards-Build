@@ -79,18 +79,34 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
+
+          function Get-FileWithRetry($Uri, $OutFile, $MaxAttempts = 5) {
+              for ($i = 1; $i -le $MaxAttempts; $i++) {
+                  try {
+                      Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UseBasicParsing
+                      return
+                  } catch {
+                      if ($i -eq $MaxAttempts) { throw }
+                      $wait = [math]::Pow(2, $i)
+                      Write-Warning "Download failed ($Uri): $($_.Exception.Message) — retrying in ${wait}s (attempt $i/$MaxAttempts)"
+                      Start-Sleep -Seconds $wait
+                  }
+              }
+          }
+
           New-Item -ItemType Directory -Force -Path "$env:DEV_DIR\Libzip", "$env:DEV_DIR\FreeType", "$env:DEV_DIR\FFmpeg", "$env:DEV_DIR\OpenAL" | Out-Null
 
-          Invoke-WebRequest -Uri "https://libzip.org/download/libzip-1.9.2.tar.gz" -OutFile "$env:TEMP\libzip.tar.gz"
+          Get-FileWithRetry "https://libzip.org/download/libzip-1.9.2.tar.gz" "$env:TEMP\libzip.tar.gz"
           tar -xzf "$env:TEMP\libzip.tar.gz" -C "$env:DEV_DIR\Libzip"
 
-          Invoke-WebRequest -Uri "https://download.savannah.gnu.org/releases/freetype/freetype-2.9.1.tar.gz" -OutFile "$env:TEMP\freetype.tar.gz"
+          # SourceForge mirror instead of download.savannah.gnu.org — Savannah's mirror network 502s often.
+          Get-FileWithRetry "https://sourceforge.net/projects/freetype/files/freetype2/2.9.1/freetype-2.9.1.tar.gz/download" "$env:TEMP\freetype.tar.gz"
           tar -xzf "$env:TEMP\freetype.tar.gz" -C "$env:DEV_DIR\FreeType"
 
-          Invoke-WebRequest -Uri "https://ffmpeg.org/releases/ffmpeg-5.0.tar.xz" -OutFile "$env:TEMP\ffmpeg.tar.xz"
+          Get-FileWithRetry "https://ffmpeg.org/releases/ffmpeg-5.0.tar.xz" "$env:TEMP\ffmpeg.tar.xz"
           tar -xf "$env:TEMP\ffmpeg.tar.xz" -C "$env:DEV_DIR\FFmpeg"
 
-          Invoke-WebRequest -Uri "https://openal-soft.org/openal-releases/openal-soft-1.22.0.tar.bz2" -OutFile "$env:TEMP\openal.tar.bz2"
+          Get-FileWithRetry "https://openal-soft.org/openal-releases/openal-soft-1.22.0.tar.bz2" "$env:TEMP\openal.tar.bz2"
           tar -xf "$env:TEMP\openal.tar.bz2" -C "$env:DEV_DIR\OpenAL"
 
       # Everything below this point only runs when the Qt cache misses.
@@ -104,16 +120,33 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
+
+          function Get-FileWithRetry($Uri, $OutFile, $MaxAttempts = 5) {
+              for ($i = 1; $i -le $MaxAttempts; $i++) {
+                  try {
+                      Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UseBasicParsing
+                      return
+                  } catch {
+                      if ($i -eq $MaxAttempts) { throw }
+                      $wait = [math]::Pow(2, $i)
+                      Write-Warning "Download failed ($Uri): $($_.Exception.Message) — retrying in ${wait}s (attempt $i/$MaxAttempts)"
+                      Start-Sleep -Seconds $wait
+                  }
+              }
+          }
+
           # slproweb's numbered download URLs (e.g. Win64OpenSSL-3_0_5.msi) get removed once superseded,
           # so resolve the current one from their official hashes feed instead of hardcoding a version.
-          $hashes = Invoke-RestMethod -Uri "https://raw.githubusercontent.com/slproweb/opensslhashes/master/win32_openssl_hashes.json"
+          $hashesFile = "$env:TEMP\openssl_hashes.json"
+          Get-FileWithRetry "https://raw.githubusercontent.com/slproweb/opensslhashes/master/win32_openssl_hashes.json" $hashesFile
+          $hashes = Get-Content $hashesFile -Raw | ConvertFrom-Json
           $latest = $hashes.files.PSObject.Properties.Value |
               Where-Object { $_.bits -eq 64 -and $_.arch -eq "INTEL" -and $_.light -eq $false -and $_.installer -eq "msi" -and $_.basever -like "3.*" } |
               Sort-Object { [version]$_.basever } -Descending |
               Select-Object -First 1
           if (-not $latest) { throw "Could not resolve a current Win64 OpenSSL 3.x MSI from opensslhashes." }
           Write-Host "Using OpenSSL $($latest.basever): $($latest.url)"
-          Invoke-WebRequest -Uri $latest.url -OutFile "$env:TEMP\openssl.msi"
+          Get-FileWithRetry $latest.url "$env:TEMP\openssl.msi"
           Start-Process msiexec.exe -ArgumentList "/i `"$env:TEMP\openssl.msi`" /qn /norestart" -Wait
 
       - name: Install Jom
@@ -121,8 +154,23 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
+
+          function Get-FileWithRetry($Uri, $OutFile, $MaxAttempts = 5) {
+              for ($i = 1; $i -le $MaxAttempts; $i++) {
+                  try {
+                      Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UseBasicParsing
+                      return
+                  } catch {
+                      if ($i -eq $MaxAttempts) { throw }
+                      $wait = [math]::Pow(2, $i)
+                      Write-Warning "Download failed ($Uri): $($_.Exception.Message) — retrying in ${wait}s (attempt $i/$MaxAttempts)"
+                      Start-Sleep -Seconds $wait
+                  }
+              }
+          }
+
           New-Item -ItemType Directory -Force -Path "$env:DEV_DIR\Jom" | Out-Null
-          Invoke-WebRequest -Uri "https://download.qt.io/official_releases/jom/jom_1_1_3.zip" -OutFile "$env:TEMP\jom.zip"
+          Get-FileWithRetry "https://download.qt.io/official_releases/jom/jom_1_1_3.zip" "$env:TEMP\jom.zip"
           Expand-Archive -Path "$env:TEMP\jom.zip" -DestinationPath "$env:DEV_DIR\Jom" -Force
           Add-Content -Path $env:GITHUB_PATH -Value "$env:DEV_DIR\Jom"
 
