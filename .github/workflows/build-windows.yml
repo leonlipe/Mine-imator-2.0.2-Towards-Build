@@ -102,8 +102,11 @@ jobs:
 
           # tar.exe failures don't throw a PowerShell error ($ErrorActionPreference doesn't cover native
           # exe exit codes), so check $LASTEXITCODE explicitly or a corrupt/HTML download extracts silently.
-          function Expand-TarWithCheck($ArchivePath, $Args, $Dest) {
-              & tar @Args $ArchivePath -C $Dest
+          # NOTE: the tar flags parameter must not be named $Args — that collides with PowerShell's
+          # reserved automatic $args variable and silently breaks splatting (tar then runs with no
+          # flags at all and dumps its usage text instead of extracting).
+          function Expand-TarWithCheck($ArchivePath, $TarFlags, $Dest) {
+              & tar @TarFlags $ArchivePath -C $Dest
               if ($LASTEXITCODE -ne 0) { throw "tar failed (exit $LASTEXITCODE) extracting $ArchivePath" }
           }
 
