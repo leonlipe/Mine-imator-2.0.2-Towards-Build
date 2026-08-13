@@ -148,13 +148,24 @@ jobs:
           if (-not $latest) { throw "Could not resolve a current Win64 OpenSSL 3.x MSI from opensslhashes." }
           Write-Host "Using OpenSSL $($latest.basever): $($latest.url)"
           Get-FileWithRetry $latest.url "$env:TEMP\openssl.msi"
-          Start-Process msiexec.exe -ArgumentList "/i `"$env:TEMP\openssl.msi`" /qn /norestart" -Wait
+
+          $msiLog = "$env:TEMP\openssl_install.log"
+          $proc = Start-Process msiexec.exe -ArgumentList "/i `"$env:TEMP\openssl.msi`" /qn /norestart /l*v `"$msiLog`"" -Wait -PassThru
+          if ($proc.ExitCode -ne 0) {
+              Write-Warning "msiexec exited with code $($proc.ExitCode); last 80 log lines:"
+              if (Test-Path $msiLog) { Get-Content $msiLog -Tail 80 | Write-Host }
+              throw "OpenSSL MSI install failed (exit $($proc.ExitCode))"
+          }
 
           # Qt's legacy configure.bat mishandles quoted -I/-L args containing a space, and the MSI's
           # default install dir is "C:\Program Files\OpenSSL-Win64" — copy to a space-free path instead
           # of trusting an unverified MSI custom-install-dir property.
           $opensslDefault = "C:\Program Files\OpenSSL-Win64"
-          if (-not (Test-Path $opensslDefault)) { throw "OpenSSL install not found at $opensslDefault" }
+          if (-not (Test-Path $opensslDefault)) {
+              Write-Warning "Expected install dir missing; msiexec log tail:"
+              if (Test-Path $msiLog) { Get-Content $msiLog -Tail 80 | Write-Host }
+              throw "OpenSSL install not found at $opensslDefault"
+          }
           $opensslNoSpaces = "$env:DEV_DIR\OpenSSL"
           Copy-Item -Path $opensslDefault -Destination $opensslNoSpaces -Recurse -Force
           Add-Content -Path $env:GITHUB_ENV -Value "OPENSSL_DIR=$opensslNoSpaces"
