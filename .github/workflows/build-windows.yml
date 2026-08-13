@@ -82,10 +82,14 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
 
+          # -TimeoutSec: without it a stalled connection hangs indefinitely instead of failing into retry.
+          # Browser User-Agent: some hosts (notably SourceForge) serve an HTML interstitial instead of the
+          # file to PowerShell's default UA.
           function Get-FileWithRetry($Uri, $OutFile, $MaxAttempts = 5) {
               for ($i = 1; $i -le $MaxAttempts; $i++) {
                   try {
-                      Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UseBasicParsing
+                      Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UseBasicParsing -TimeoutSec 120 `
+                          -Headers @{ "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }
                       return
                   } catch {
                       if ($i -eq $MaxAttempts) { throw }
@@ -96,20 +100,27 @@ jobs:
               }
           }
 
+          # tar.exe failures don't throw a PowerShell error ($ErrorActionPreference doesn't cover native
+          # exe exit codes), so check $LASTEXITCODE explicitly or a corrupt/HTML download extracts silently.
+          function Expand-TarWithCheck($ArchivePath, $Args, $Dest) {
+              & tar @Args $ArchivePath -C $Dest
+              if ($LASTEXITCODE -ne 0) { throw "tar failed (exit $LASTEXITCODE) extracting $ArchivePath" }
+          }
+
           New-Item -ItemType Directory -Force -Path "$env:DEV_DIR\Libzip", "$env:DEV_DIR\FreeType", "$env:DEV_DIR\FFmpeg", "$env:DEV_DIR\OpenAL" | Out-Null
 
           Get-FileWithRetry "https://libzip.org/download/libzip-1.9.2.tar.gz" "$env:TEMP\libzip.tar.gz"
-          tar -xzf "$env:TEMP\libzip.tar.gz" -C "$env:DEV_DIR\Libzip"
+          Expand-TarWithCheck "$env:TEMP\libzip.tar.gz" @("-xzf") "$env:DEV_DIR\Libzip"
 
           # SourceForge mirror instead of download.savannah.gnu.org — Savannah's mirror network 502s often.
           Get-FileWithRetry "https://sourceforge.net/projects/freetype/files/freetype2/2.9.1/freetype-2.9.1.tar.gz/download" "$env:TEMP\freetype.tar.gz"
-          tar -xzf "$env:TEMP\freetype.tar.gz" -C "$env:DEV_DIR\FreeType"
+          Expand-TarWithCheck "$env:TEMP\freetype.tar.gz" @("-xzf") "$env:DEV_DIR\FreeType"
 
           Get-FileWithRetry "https://ffmpeg.org/releases/ffmpeg-5.0.tar.xz" "$env:TEMP\ffmpeg.tar.xz"
-          tar -xf "$env:TEMP\ffmpeg.tar.xz" -C "$env:DEV_DIR\FFmpeg"
+          Expand-TarWithCheck "$env:TEMP\ffmpeg.tar.xz" @("-xf") "$env:DEV_DIR\FFmpeg"
 
           Get-FileWithRetry "https://openal-soft.org/openal-releases/openal-soft-1.22.0.tar.bz2" "$env:TEMP\openal.tar.bz2"
-          tar -xf "$env:TEMP\openal.tar.bz2" -C "$env:DEV_DIR\OpenAL"
+          Expand-TarWithCheck "$env:TEMP\openal.tar.bz2" @("-xf") "$env:DEV_DIR\OpenAL"
 
       # Everything below this point only runs when the Qt cache misses.
       - name: Install Strawberry Perl (for Qt's init-repository)
@@ -126,7 +137,7 @@ jobs:
           function Get-FileWithRetry($Uri, $OutFile, $MaxAttempts = 5) {
               for ($i = 1; $i -le $MaxAttempts; $i++) {
                   try {
-                      Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UseBasicParsing
+                      Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UseBasicParsing -TimeoutSec 120
                       return
                   } catch {
                       if ($i -eq $MaxAttempts) { throw }
@@ -199,6 +210,7 @@ jobs:
         run: |
           cd /d "%DEV_DIR%\Qt\%QT_VERSION%\qt5"
           configure.bat -platform win32-msvc -prefix "%DEV_DIR%/Qt/%QT_VERSION%/build" -opensource -confirm-license -release -static -static-runtime -qt-libjpeg -opengl desktop -schannel -no-icu -nomake tests -nomake examples -nomake tools -skip qt3d -skip qtmultimedia -skip activeqt -skip qtandroidextras -skip qtconnectivity -skip datavis3d -skip qtdoc -skip gamepad -skip qtgraphicaleffects -skip qtcharts -skip qtlocation -skip qtlottie -skip qtnetworkauth -skip qtpurchasing -skip qtquick3d -skip qtquickcontrols -skip qtquickcontrols2 -skip qtquicktimeline -skip qtremoteobjects -skip qtscxml -skip qtsensors -skip qtserialbus -skip qtserialport -skip qtspeech -skip qtvirtualkeyboard -skip qtwayland -skip qtwebengine -skip qtwebglplugin -skip qtwebchannel -skip qtwebsockets -skip qtwebview -skip qtxmlpatterns
+          if errorlevel 1 exit /b 1
 
       - name: Build Qt (jom)
         if: steps.cache-qt.outputs.cache-hit != 'true'
@@ -206,7 +218,9 @@ jobs:
         run: |
           cd /d "%DEV_DIR%\Qt\%QT_VERSION%\qt5"
           jom
+          if errorlevel 1 exit /b 1
           jom install
+          if errorlevel 1 exit /b 1
 
       - name: Build Mine-imator (CppGen + CMake + package)
         shell: pwsh
