@@ -180,7 +180,11 @@ jobs:
           }
           Set-Location "qt5"
           Invoke-WithRetry { git checkout 5.15 }
-          Invoke-WithRetry { perl init-repository }
+          # -f: a retry after a partial failure otherwise refuses with "already initialized" instead of
+          # resuming (already-cloned submodules are still skipped underneath; -f only lifts that guard).
+          # -qtwebengine: it embeds full Chromium (qtwebengine-chromium) — huge, and configure.bat below
+          # already passes -skip qtwebengine, so cloning it is pure waste (and the most failure-prone step).
+          Invoke-WithRetry { perl init-repository -f --module-subset=default,-qtwebengine }
 
       # Uses -schannel (Windows' native TLS backend) instead of CppProject/BUILD.md's -openssl-linked:
       # the app has no direct OpenSSL/QSsl usage in source, and Shining Light's static-lib packaging
