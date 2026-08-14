@@ -239,15 +239,27 @@ jobs:
           configure.bat -platform win32-msvc -prefix "%DEV_DIR%/Qt/%QT_VERSION%/build" -opensource -confirm-license -release -static -static-runtime -qt-libjpeg -opengl desktop -schannel -no-icu -nomake tests -nomake examples -nomake tools -skip qt3d -skip qtmultimedia -skip activeqt -skip qtandroidextras -skip qtconnectivity -skip datavis3d -skip qtdoc -skip gamepad -skip qtgraphicaleffects -skip qtcharts -skip qtlocation -skip qtlottie -skip qtnetworkauth -skip qtpurchasing -skip qtquick3d -skip qtquickcontrols -skip qtquickcontrols2 -skip qtquicktimeline -skip qtremoteobjects -skip qtscxml -skip qtsensors -skip qtserialbus -skip qtserialport -skip qtspeech -skip qtvirtualkeyboard -skip qtwayland -skip qtwebengine -skip qtwebglplugin -skip qtwebchannel -skip qtwebsockets -skip qtwebview -skip qtxmlpatterns
           if errorlevel 1 exit /b 1
 
+      # jom's parallel plugin builds (e.g. tga/wbmp/tiff under qtimageformats) each call qmake, which
+      # mkpath()s a shared mkspecs\modules-inst\ dir non-atomically — two can race and one fails with
+      # "Cannot create parent directory". Transient: the dir exists by the next attempt, so retry it.
       - name: Build Qt (jom)
         if: steps.cache-qt.outputs.cache-hit != 'true'
-        shell: cmd
+        shell: pwsh
         run: |
-          cd /d "%DEV_DIR%\Qt\%QT_VERSION%\qt5"
-          jom
-          if errorlevel 1 exit /b 1
-          jom install
-          if errorlevel 1 exit /b 1
+          $ErrorActionPreference = "Stop"
+          Set-Location "$env:DEV_DIR\Qt\$env:QT_VERSION\qt5"
+
+          function Invoke-JomWithRetry([string[]]$JomArgs, $MaxAttempts = 4) {
+              for ($i = 1; $i -le $MaxAttempts; $i++) {
+                  jom @JomArgs
+                  if ($LASTEXITCODE -eq 0) { return }
+                  if ($i -eq $MaxAttempts) { throw "jom $JomArgs failed after $MaxAttempts attempts (exit $LASTEXITCODE)" }
+                  Write-Warning "jom $JomArgs failed (exit $LASTEXITCODE) - retrying (attempt $($i+1)/$MaxAttempts)"
+              }
+          }
+
+          Invoke-JomWithRetry @()
+          Invoke-JomWithRetry @('install')
 
       - name: Build Mine-imator (CppGen + CMake + package)
         shell: pwsh
